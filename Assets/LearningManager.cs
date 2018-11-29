@@ -11,9 +11,16 @@ public class LearningManager : MonoBehaviour {
     public Image GenChart;
     public Text ScoreText;
     public Text GenText;
+    public Text TimeText;
+    public Text StateText;
 
     public string FilesLocation;
+    public InputField NetworkToLoadFld;
     public string FileToLoad;
+
+    public float chartScale;
+
+    private enum LearnStates {Idle, Learning, FinishedLearning };
 
     private const int SIMULATIONS_NUM = 500;
     private const int MAX_TREAD_NUM = 20;
@@ -28,8 +35,11 @@ public class LearningManager : MonoBehaviour {
     internal int CurrentGen = 0;
 
     private int _testedSimulations = 0;
-
+    private bool _anyThreadsRunning;
+    private int _batchNumOfThreads;
     public int GamesPerIteration = 0;
+
+    public TimeSpan LastRunTime;
 
     public float LastGenMaxScore = float.MinValue;
     public float AllTimesMaxScore = float.MinValue;
@@ -39,10 +49,10 @@ public class LearningManager : MonoBehaviour {
     public bool LoadedFromFile = false;
 
 
-    public Simulation[] Simulations;
-    public Simulation ParentSimulation;
+    internal Simulation[] Simulations;
+    internal Simulation ParentSimulation;
 
-    public Thread[] Threads;
+    internal Thread[] Threads;
 
     internal bool IsLearning;
 
@@ -50,6 +60,10 @@ public class LearningManager : MonoBehaviour {
     private long _firstGenStartTime;
 
     BinaryFormatter _bf = new BinaryFormatter();
+
+    private DateTime _startTime;
+
+    private LearnStates _learnState = LearnStates.Idle;
 
     public void Init() {
         Simulations = new Simulation[SIMULATIONS_NUM];
@@ -73,7 +87,9 @@ public class LearningManager : MonoBehaviour {
     }
 
     void Update() {
-        if (IsLearning) {
+        
+        if (IsLearning && _learnState == LearnStates.Idle) {
+
 
             //create gen
             CreateGen();
@@ -84,40 +100,62 @@ public class LearningManager : MonoBehaviour {
             }
             _testedSimulations = 0;
 
-            bool anyThreadsRunning = false;
-            int batchNumOfThreads = 0;
+            _anyThreadsRunning = false;
+            _batchNumOfThreads = 0;
+            _learnState = LearnStates.Learning;
+            StateText.text = "Learning";
+        }
 
-            while (_testedSimulations < SIMULATIONS_NUM || anyThreadsRunning) {
-                if (!anyThreadsRunning && _testedSimulations < SIMULATIONS_NUM) {
+        if (_learnState == LearnStates.Learning) {
+            if (_testedSimulations < SIMULATIONS_NUM || _anyThreadsRunning) {
+                if (!_anyThreadsRunning ) {
+
 
                     //run simulation batch
 
-                    batchNumOfThreads = Mathf.Min(MAX_TREAD_NUM, SIMULATIONS_NUM - _testedSimulations);
+                    _batchNumOfThreads = Mathf.Min(MAX_TREAD_NUM, SIMULATIONS_NUM - _testedSimulations);
 
-                    _testedSimulations += batchNumOfThreads;
+                    _testedSimulations += _batchNumOfThreads;
 
-                    for (int i = 0; i < batchNumOfThreads; i++) {
+                    for (int i = 0; i < _batchNumOfThreads; i++) {
                         Threads[_testedSimulations - 1 - i].Start();
+                    }
+                    
+
+                    _anyThreadsRunning = true;
+                } else {
+                    _anyThreadsRunning = false;
+                    for (int i = 0; i < _batchNumOfThreads; i++) {
+                        _anyThreadsRunning |= Threads[_testedSimulations - 1 - i].IsAlive;
                     }
                 }
 
-                anyThreadsRunning = false;
-                for (int i = 0; i < batchNumOfThreads; i++) {
-                    anyThreadsRunning |= Threads[_testedSimulations - 1 - i].IsAlive;
-                }
+
+            } else {
+                _learnState = LearnStates.FinishedLearning;
+                StateText.text = "FinishedLearning";
             }
 
+
+        } else if (_learnState == LearnStates.FinishedLearning) {
             //conclude gen
             ConcludeGen();
 
             CurrentGen++;
+            _learnState = LearnStates.Idle;
+            StateText.text = "Idle";
         }
+
+
     }
 
     private void CreateGen() {
         if (CurrentGen == 0) {
             _firstGenStartTime = DateTime.Now.Ticks;
         }
+
+        _startTime = DateTime.Now;
+
         bool gamesPIChanged = false;
 
         if (CurrentGen == 0) {
@@ -157,6 +195,8 @@ public class LearningManager : MonoBehaviour {
             return b.OverallScore.CompareTo(a.OverallScore);
         });
 
+        LastRunTime = DateTime.Now - _startTime;
+
         LastGenMaxScore = Simulations[0].OverallScore;
 
         LastGenAvgScore = 0;
@@ -166,16 +206,23 @@ public class LearningManager : MonoBehaviour {
         LastGenAvgScore /= Simulations.Length;
         if (LastGenAvgScore > AllTimesAvgScore) {
             AllTimesAvgScore = LastGenAvgScore;
-            SaveNetworkToFile();
+            SaveNetworkToFile(true);
         }
-        
+
+        AllTimesMaxScore = Mathf.Max(AllTimesMaxScore, Simulations[0].OverallScore);
+
+        SaveNetworkToFile(false);
+
         //use best model as parent
         NuralNetworkModel.Duplicate(Simulations[0].NuralNetwork, ParentSimulation.NuralNetwork);
 
         PlotLastGen();
+
+        
+
     }
 
-    private void SaveNetworkToFile() {
+    private void SaveNetworkToFile(bool isRecord) {
         GenSummary summary = new GenSummary();
         summary.BestModel = ParentSimulation.NuralNetwork;
         summary.Score = LastGenMaxScore;
@@ -184,9 +231,19 @@ public class LearningManager : MonoBehaviour {
         summary.GamesPerIteration = GamesPerIteration;
         summary.FirstGenStartTime = _firstGenStartTime;
 
-        FileStream file;
+        string dirPath = String.Format("{0}/{1}", FilesLocation, _firstGenStartTime);
 
-        string destination = String.Format("{0}{1}_GEN_{2}_SCORE_{3}", FilesLocation, _firstGenStartTime, CurrentGen, LastGenMaxScore);
+        if (!Directory.Exists(dirPath)) {
+            Directory.CreateDirectory(dirPath);
+        }
+
+        FileStream file;
+        string destination;
+        if (isRecord) {
+            destination = String.Format("{0}/GEN_{1}_SCORE_{2}", dirPath, CurrentGen, LastGenMaxScore);
+        } else {
+            destination = String.Format("{0}/latest", dirPath);
+        }
 
         if (File.Exists(destination)) {
             file = File.OpenWrite(destination);
@@ -199,7 +256,7 @@ public class LearningManager : MonoBehaviour {
     }
 
     public void LoadNetworkFromFile() {
-        string destination = String.Format("{0}{1}", FilesLocation, FileToLoad);
+        string destination = String.Format("{0}/{1}/{2}", FilesLocation, NetworkToLoadFld.text, FileToLoad);
         StreamReader reader = new StreamReader(destination);
         GenSummary summary = _bf.Deserialize(reader.BaseStream) as GenSummary;
         reader.Close();
@@ -216,13 +273,15 @@ public class LearningManager : MonoBehaviour {
 
     private void PlotLastGen() {
         ScoreText.text = LastGenAvgScore + " / " + AllTimesMaxScore;
-        GenText.text = "completed: " + CurrentGen;
+        GenText.text = "LastGen: " + CurrentGen;
+        TimeText.text = "runtime: " + LastRunTime.TotalSeconds + "sec";
+
 
         for (int i = 0; i < _plotResY; i++) {
             Color col;
-            if (i < LastGenAvgScore / 1f) {
+            if (i < LastGenAvgScore * chartScale) {
                 col = Color.red;
-            } else if (i < LastGenMaxScore / 3f) {
+            } else if (i < LastGenMaxScore * chartScale) {
                 col = Color.green;
             } else {
                 col = Color.blue;
@@ -243,6 +302,11 @@ public class LearningManager : MonoBehaviour {
         public float MaxScore;
         public long FirstGenStartTime;
         public int GamesPerIteration;
+    }
+
+    [Serializable]
+    private class FullSummary {
+        public GenSummary[] Gens;
     }
 }
 

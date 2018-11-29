@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -19,7 +20,7 @@ public class GameVisualizer2048 : BaseGameVisualizer {
     }
 
 	override internal void ResetGame() {
-        SrcSimulation.Game.ResetGame(0);
+        SrcSimulation.Game.ResetGame((int)DateTime.Now.Ticks);
         RenderTiles();
     }
 

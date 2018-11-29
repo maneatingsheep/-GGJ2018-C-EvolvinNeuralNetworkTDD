@@ -10,6 +10,7 @@ public class Game2048 : GameModel {
     internal LogicTile[][] Tiles;
 
     private float _score;
+    private float _moveCount;
 
     internal const int SIDE_LEN = 4;
     internal const int STARTING_PICIES = 2;
@@ -65,7 +66,9 @@ public class Game2048 : GameModel {
         }
 
         _score = 0;
-        
+        _moveCount = 0;
+
+
     }
 
     private void SpawnTile(int tileValue) {
@@ -212,7 +215,7 @@ public class Game2048 : GameModel {
 
                     if (merge) {
                         Tiles[ShiftScannerX][ShiftScannerY].Merged = true;
-                        mergeScore += Tiles[ShiftScannerX][ShiftScannerY].NumValue;
+                        mergeScore += (int)Math.Pow(2, Tiles[ShiftScannerX][ShiftScannerY].NumValue);
                         Tiles[ShiftScannerX][ShiftScannerY].PossibleAction = LogicTile.ActionType.Grow;
                     }
 
@@ -250,9 +253,10 @@ public class Game2048 : GameModel {
 
         if (moveMade) {
             SpawnTile(-1);
+            _moveCount++;
         }
 
-        _score += ((mergeScore <= 0) ? -1 : mergeScore * 2);
+        _score += ((mergeScore <= 0) ? 0 : mergeScore);
 
         return !moveMade;
 
@@ -268,7 +272,7 @@ public class Game2048 : GameModel {
     }
 
     override public float GetScore() {
-        return _score;
+        return (_moveCount / 20f) + _score / Mathf.Max(_moveCount, 1);
     }
 
 }
