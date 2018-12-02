@@ -23,7 +23,7 @@ public class LearningManager : MonoBehaviour {
     private enum LearnStates {Idle, Learning, FinishedLearning };
 
     private const int SIMULATIONS_NUM = 500;
-    private const int MAX_TREAD_NUM = 20;
+    private const int MAX_TREAD_NUM = 10;
 
     private const int _plotResX = 400;
     private const int _plotResY = 200;
@@ -286,8 +286,8 @@ public class LearningManager : MonoBehaviour {
             } else {
                 col = Color.blue;
             }
-            GenChart.sprite.texture.SetPixel((CurrentGen - 1) % _plotResX, i, col);
-            GenChart.sprite.texture.SetPixel((CurrentGen) % _plotResX, i, Color.black);
+            GenChart.sprite.texture.SetPixel((CurrentGen) % _plotResX, i, col);
+            GenChart.sprite.texture.SetPixel((CurrentGen + 1) % _plotResX, i, Color.black);
 
         }
         GenChart.sprite.texture.Apply();

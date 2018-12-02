@@ -215,7 +215,7 @@ public class Game2048 : GameModel {
 
                     if (merge) {
                         Tiles[ShiftScannerX][ShiftScannerY].Merged = true;
-                        mergeScore += (int)Math.Pow(2, Tiles[ShiftScannerX][ShiftScannerY].NumValue);
+                        mergeScore += (int)Math.Pow(2, Tiles[ShiftScannerX][ShiftScannerY].NumValue * 2);
                         Tiles[ShiftScannerX][ShiftScannerY].PossibleAction = LogicTile.ActionType.Grow;
                     }
 
