@@ -6,13 +6,13 @@ public class NuralNetworkModel {
 
 
     internal static int TOTAL_LAYERS_NUM = 5;
-    internal static int HIDDEN_LAYERS_SIZE = 150;
+    internal static int HIDDEN_LAYERS_SIZE = 64;
     internal static int INPUT_SIZE = 16;
     internal static int OUTPUT_SIZE = 4;
 
     internal static float BIG_VARIATION_SIZE = 0.5f;
-    internal static float SMALL_VARIATION_SIZE = 0.15f; //0.15f worked well
-    internal static float OFFSET_VARIATION_SIZE = 0.05f; 
+    internal static float SMALL_VARIATION_SIZE = 0.0005f; //0.15f worked well
+    internal static float OFFSET_VARIATION_SIZE = 0.00005f; 
     internal static float HALF_BIG_VARIATION_SIZE;
     internal static float HALF_SMALL_VARIATION_SIZE;
     internal static float HALF_OFFSET_VARIATION_SIZE; 

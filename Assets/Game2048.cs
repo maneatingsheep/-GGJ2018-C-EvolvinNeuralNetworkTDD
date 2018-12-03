@@ -272,7 +272,7 @@ public class Game2048 : GameModel {
     }
 
     override public float GetScore() {
-        return (_moveCount / 20f) + _score / Mathf.Max(_moveCount, 1);
+        return (_moveCount / 10f) + _score / Mathf.Max(_moveCount, 1);
     }
 
 }
