@@ -13,17 +13,20 @@ public class LearningManager : MonoBehaviour {
     public Text GenText;
     public Text TimeText;
     public Text StateText;
+    public Text ScaleText;
 
     public string FilesLocation;
     public InputField NetworkToLoadFld;
     public string FileToLoad;
 
-    public float chartScale;
+    public float ChartScale;
 
     private enum LearnStates {Idle, Learning, FinishedLearning };
 
     private const int SIMULATIONS_NUM = 500;
     private const int MAX_TREAD_NUM = 10;
+
+    private const int GENS_WITHOUT_RECORD_LIMIT = 70;
 
     private const int _plotResX = 400;
     private const int _plotResY = 200;
@@ -46,6 +49,9 @@ public class LearningManager : MonoBehaviour {
     public float LastGenAvgScore = 0;
     public float AllTimesAvgScore = float.MinValue;
 
+    public int LastRecordBrokenGensAgo = 0;
+    public int DecrementsWithNoRecord = 0;
+
     public bool LoadedFromFile = false;
 
 
@@ -65,6 +71,7 @@ public class LearningManager : MonoBehaviour {
 
     private LearnStates _learnState = LearnStates.Idle;
 
+
     public void Init() {
         Simulations = new Simulation[SIMULATIONS_NUM];
         for (int i = 0; i < SIMULATIONS_NUM; i++) {
@@ -83,7 +90,13 @@ public class LearningManager : MonoBehaviour {
                 GenChart.sprite.texture.SetPixel(i, j, Color.blue);
             }
         }
+
+        ScaleGraph(true); //init scale display
+        ScaleGraph(false);
+
         GenChart.sprite.texture.Apply();
+
+
     }
 
     void Update() {
@@ -140,6 +153,21 @@ public class LearningManager : MonoBehaviour {
         } else if (_learnState == LearnStates.FinishedLearning) {
             //conclude gen
             ConcludeGen();
+
+            if (LastRecordBrokenGensAgo > GENS_WITHOUT_RECORD_LIMIT) {
+                if (DecrementsWithNoRecord == 2) {
+                    NuralNetworkModel.DecreaseSteps(true);
+                } else if (DecrementsWithNoRecord == 3) {
+                    NuralNetworkModel.ResetSteps();
+                    DecrementsWithNoRecord = 0;
+                } else {
+                    DecrementsWithNoRecord++;
+                }
+
+                LastRecordBrokenGensAgo = 0;
+                NuralNetworkModel.DecreaseSteps(false);
+                
+            }
 
             CurrentGen++;
             _learnState = LearnStates.Idle;
@@ -204,9 +232,14 @@ public class LearningManager : MonoBehaviour {
             LastGenAvgScore += s.OverallScore;
         }
         LastGenAvgScore /= Simulations.Length;
+
+        LastRecordBrokenGensAgo++;
+
         if (LastGenAvgScore > AllTimesAvgScore) {
             AllTimesAvgScore = LastGenAvgScore;
             SaveNetworkToFile(true);
+            LastRecordBrokenGensAgo = 0;
+            DecrementsWithNoRecord = 0;
         }
 
         AllTimesMaxScore = Mathf.Max(AllTimesMaxScore, Simulations[0].OverallScore);
@@ -273,15 +306,15 @@ public class LearningManager : MonoBehaviour {
 
     private void PlotLastGen() {
         ScoreText.text = LastGenAvgScore + " / " + AllTimesMaxScore;
-        GenText.text = "LastGen: " + CurrentGen;
+        GenText.text = "LastGen: " + CurrentGen + " / " + LastRecordBrokenGensAgo + " Small Step: " + NuralNetworkModel.SMALL_VARIATION_SIZE;
         TimeText.text = "runtime: " + LastRunTime.TotalSeconds + "sec";
 
 
         for (int i = 0; i < _plotResY; i++) {
             Color col;
-            if (i < LastGenAvgScore * chartScale) {
+            if (i < LastGenAvgScore * ChartScale) {
                 col = Color.red;
-            } else if (i < LastGenMaxScore * chartScale) {
+            } else if (i < LastGenMaxScore * ChartScale) {
                 col = Color.green;
             } else {
                 col = Color.blue;
@@ -292,6 +325,17 @@ public class LearningManager : MonoBehaviour {
         }
         GenChart.sprite.texture.Apply();
 
+
+    }
+
+    public void ScaleGraph(bool isUp) {
+        if (isUp) {
+            ChartScale *= 2;
+        } else {
+            ChartScale /= 2;
+        }
+
+        ScaleText.text = "Scale: " + ChartScale;
     }
 
     [Serializable]

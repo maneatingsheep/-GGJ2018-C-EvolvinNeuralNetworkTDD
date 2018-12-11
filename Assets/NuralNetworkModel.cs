@@ -10,12 +10,13 @@ public class NuralNetworkModel {
     internal static int INPUT_SIZE = 16;
     internal static int OUTPUT_SIZE = 4;
 
-    internal static float BIG_VARIATION_SIZE = 0.5f;
-    internal static float SMALL_VARIATION_SIZE = 0.0005f; //0.15f worked well
-    internal static float OFFSET_VARIATION_SIZE = 0.00005f; 
+    internal static float BIG_VARIATION_SIZE;// = 0.5f;
+    internal static float SMALL_VARIATION_SIZE;// = 0.1f; //0.15f worked well
+    internal static float OFFSET_VARIATION_SIZE;// = 0.01f; 
     internal static float HALF_BIG_VARIATION_SIZE;
     internal static float HALF_SMALL_VARIATION_SIZE;
-    internal static float HALF_OFFSET_VARIATION_SIZE; 
+    internal static float HALF_OFFSET_VARIATION_SIZE;
+
     internal static float MUTATION_NONE = 0.0f;
     internal static float MUTATION_SMALL = 1.0f;
     internal static float MUTATION_BIG = 0.0f;
@@ -36,10 +37,7 @@ public class NuralNetworkModel {
 
 
     public NuralNetworkModel() {
-        HALF_BIG_VARIATION_SIZE = BIG_VARIATION_SIZE / 2f;
-        HALF_SMALL_VARIATION_SIZE = SMALL_VARIATION_SIZE / 2f;
-        HALF_OFFSET_VARIATION_SIZE = OFFSET_VARIATION_SIZE / 2f;
-
+       
         //weights
         Weights = new float[TOTAL_LAYERS_NUM][][];
         ActivationFunction = new ActivationFunctions[TOTAL_LAYERS_NUM][][];
@@ -85,6 +83,8 @@ public class NuralNetworkModel {
                 Layers[i] = new float[HIDDEN_LAYERS_SIZE];
             }
         }
+
+        ResetSteps();
     }
 
     public static void PrepareNextGen(NuralNetworkModel parent, NuralNetworkModel child, System.Random rnd) {
@@ -117,6 +117,33 @@ public class NuralNetworkModel {
         }
 
 
+    }
+
+    internal static void DecreaseSteps(bool isReverse) {
+        if (isReverse) {
+            SMALL_VARIATION_SIZE *= 4;
+            OFFSET_VARIATION_SIZE *= 4;
+            BIG_VARIATION_SIZE *= 4;
+        } else {
+            SMALL_VARIATION_SIZE /= 2;
+            OFFSET_VARIATION_SIZE /= 2;
+            BIG_VARIATION_SIZE /= 2;
+        }
+        
+        
+        HALF_BIG_VARIATION_SIZE = BIG_VARIATION_SIZE / 2f;
+        HALF_SMALL_VARIATION_SIZE = SMALL_VARIATION_SIZE / 2f;
+        HALF_OFFSET_VARIATION_SIZE = OFFSET_VARIATION_SIZE / 2f;
+    }
+
+    internal static void ResetSteps() {
+        SMALL_VARIATION_SIZE = 0.1f;
+        OFFSET_VARIATION_SIZE = 0.01f;
+        BIG_VARIATION_SIZE = 0.5f;
+
+        HALF_BIG_VARIATION_SIZE = BIG_VARIATION_SIZE / 2f;
+        HALF_SMALL_VARIATION_SIZE = SMALL_VARIATION_SIZE / 2f;
+        HALF_OFFSET_VARIATION_SIZE = OFFSET_VARIATION_SIZE / 2f;
     }
 
     internal static void Duplicate(NuralNetworkModel src, NuralNetworkModel dest) {
