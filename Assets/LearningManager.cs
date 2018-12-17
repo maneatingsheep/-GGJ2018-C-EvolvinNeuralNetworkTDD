@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
@@ -26,7 +27,7 @@ public class LearningManager : MonoBehaviour {
     private const int SIMULATIONS_NUM = 500;
     private const int MAX_TREAD_NUM = 10;
 
-    private const int GENS_WITHOUT_RECORD_LIMIT = 70;
+    private const int GENS_WITHOUT_RECORD_LIMIT = 40;
 
     private const int _plotResX = 400;
     private const int _plotResY = 200;
@@ -51,6 +52,7 @@ public class LearningManager : MonoBehaviour {
 
     public int LastRecordBrokenGensAgo = 0;
     public int DecrementsWithNoRecord = 0;
+    public bool IsConverging; 
 
     public bool LoadedFromFile = false;
 
@@ -71,6 +73,9 @@ public class LearningManager : MonoBehaviour {
 
     private LearnStates _learnState = LearnStates.Idle;
 
+    private List<GenSummary> GenRecord = new List<GenSummary>();
+    private int _chartOffset = 0;
+    private bool _isTRacking = true;
 
     public void Init() {
         Simulations = new Simulation[SIMULATIONS_NUM];
@@ -83,20 +88,8 @@ public class LearningManager : MonoBehaviour {
         _rnd = new System.Random();
 
         Threads = new Thread[SIMULATIONS_NUM];
-        
-
-        for (int i = 0; i < GenChart.sprite.texture.width; i++) {
-            for (int j = 0; j < GenChart.sprite.texture.height; j++) {
-                GenChart.sprite.texture.SetPixel(i, j, Color.blue);
-            }
-        }
-
-        ScaleGraph(true); //init scale display
-        ScaleGraph(false);
-
-        GenChart.sprite.texture.Apply();
-
-
+       
+        PlotGenRecord();
     }
 
     void Update() {
@@ -155,17 +148,15 @@ public class LearningManager : MonoBehaviour {
             ConcludeGen();
 
             if (LastRecordBrokenGensAgo > GENS_WITHOUT_RECORD_LIMIT) {
-                if (DecrementsWithNoRecord == 2) {
-                    NuralNetworkModel.DecreaseSteps(true);
-                } else if (DecrementsWithNoRecord == 3) {
-                    NuralNetworkModel.ResetSteps();
-                    DecrementsWithNoRecord = 0;
+                if (DecrementsWithNoRecord == 3) {
+                    IsConverging = false;
                 } else {
                     DecrementsWithNoRecord++;
                 }
 
                 LastRecordBrokenGensAgo = 0;
-                NuralNetworkModel.DecreaseSteps(false);
+
+                NuralNetworkModel.ChangeSteps(IsConverging);
                 
             }
 
@@ -240,6 +231,8 @@ public class LearningManager : MonoBehaviour {
             SaveNetworkToFile(true);
             LastRecordBrokenGensAgo = 0;
             DecrementsWithNoRecord = 0;
+            IsConverging = true;
+            DecrementsWithNoRecord = 0;
         }
 
         AllTimesMaxScore = Mathf.Max(AllTimesMaxScore, Simulations[0].OverallScore);
@@ -249,7 +242,7 @@ public class LearningManager : MonoBehaviour {
         //use best model as parent
         NuralNetworkModel.Duplicate(Simulations[0].NuralNetwork, ParentSimulation.NuralNetwork);
 
-        PlotLastGen();
+        PlotGenRecord();
 
         
 
@@ -258,11 +251,14 @@ public class LearningManager : MonoBehaviour {
     private void SaveNetworkToFile(bool isRecord) {
         GenSummary summary = new GenSummary();
         summary.BestModel = ParentSimulation.NuralNetwork;
-        summary.Score = LastGenMaxScore;
+        summary.AvgScore = LastGenAvgScore;
         summary.MaxScore = LastGenMaxScore;
         summary.GenNum = CurrentGen;
         summary.GamesPerIteration = GamesPerIteration;
         summary.FirstGenStartTime = _firstGenStartTime;
+        summary.LastRecordBrokenGensAgo = LastRecordBrokenGensAgo;
+        summary.DecrementsWithNoRecord = DecrementsWithNoRecord;
+        summary.IsConverging = IsConverging;
 
         string dirPath = String.Format("{0}/{1}", FilesLocation, _firstGenStartTime);
 
@@ -286,6 +282,21 @@ public class LearningManager : MonoBehaviour {
 
         _bf.Serialize(file, summary);
         file.Close();
+
+        if (!isRecord) {
+            GenRecord.Add(summary);
+        }
+
+        destination = String.Format("{0}/record", dirPath);
+
+        if (File.Exists(destination)) {
+            file = File.OpenWrite(destination);
+        } else {
+            file = File.Create(destination);
+        }
+
+        _bf.Serialize(file, GenRecord);
+        file.Close();
     }
 
     public void LoadNetworkFromFile() {
@@ -299,29 +310,55 @@ public class LearningManager : MonoBehaviour {
         NuralNetworkModel.Duplicate(summary.BestModel, ParentSimulation.NuralNetwork);
         AllTimesMaxScore = summary.MaxScore;
         _firstGenStartTime = summary.FirstGenStartTime;
+        LastRecordBrokenGensAgo = summary.LastRecordBrokenGensAgo;
+        DecrementsWithNoRecord = summary.DecrementsWithNoRecord;
+        IsConverging = summary.IsConverging;
+
+        destination = String.Format("{0}/{1}/{2}", FilesLocation, NetworkToLoadFld.text, "record");
+        reader = new StreamReader(destination);
+        GenRecord = _bf.Deserialize(reader.BaseStream) as List<GenSummary>;
+        reader.Close();
 
         LoadedFromFile = true;
 
+        PlotGenRecord();
     }
 
-    private void PlotLastGen() {
+    private void PlotGenRecord() {
         ScoreText.text = LastGenAvgScore + " / " + AllTimesMaxScore;
         GenText.text = "LastGen: " + CurrentGen + " / " + LastRecordBrokenGensAgo + " Small Step: " + NuralNetworkModel.SMALL_VARIATION_SIZE;
         TimeText.text = "runtime: " + LastRunTime.TotalSeconds + "sec";
+        ScaleText.text = "Scale: " + ChartScale + "Offset: " + _chartOffset;
 
-
-        for (int i = 0; i < _plotResY; i++) {
-            Color col;
-            if (i < LastGenAvgScore * ChartScale) {
-                col = Color.red;
-            } else if (i < LastGenMaxScore * ChartScale) {
-                col = Color.green;
-            } else {
-                col = Color.blue;
+        if (_isTRacking) {
+            while (_chartOffset < GenRecord.Count - _plotResX + 1) {
+                _chartOffset++;
             }
-            GenChart.sprite.texture.SetPixel((CurrentGen) % _plotResX, i, col);
-            GenChart.sprite.texture.SetPixel((CurrentGen + 1) % _plotResX, i, Color.black);
+        }
 
+
+        for (int i = 0; i < _plotResX; i++) {
+            for (int j = 0; j < _plotResY; j++) {
+                Color col;
+                if (i + _chartOffset > GenRecord.Count) {
+                    col = Color.blue;
+                } else if (i + _chartOffset == GenRecord.Count) {
+                    col = Color.black;
+                } else {
+                    if (j < GenRecord[i + _chartOffset].AvgScore * ChartScale) {
+                        col = Color.red;
+                    } else if (j < GenRecord[i + _chartOffset].MaxScore * ChartScale) {
+                        col = Color.green;
+                    } else {
+                        col = Color.blue;
+                    }
+                }
+                
+                //GenChart.sprite.texture.SetPixel((CurrentGen) % _plotResX, i, col);
+                //GenChart.sprite.texture.SetPixel((CurrentGen + 1) % _plotResX, i, Color.black);
+                GenChart.sprite.texture.SetPixel(i, j, col);
+
+            }
         }
         GenChart.sprite.texture.Apply();
 
@@ -335,17 +372,36 @@ public class LearningManager : MonoBehaviour {
             ChartScale /= 2;
         }
 
-        ScaleText.text = "Scale: " + ChartScale;
+        PlotGenRecord();
+    }
+
+    public void SlideGraph(bool isRight) {
+        if (isRight) {
+            if (_chartOffset < GenRecord.Count - _plotResX + 1) {
+                _chartOffset += 10;
+                if (_chartOffset >= GenRecord.Count - _plotResX + 1) {
+                    _isTRacking = true;
+                } 
+            }
+        } else {
+            _chartOffset = Mathf.Max(0, _chartOffset - 10);
+            _isTRacking = false;
+        }
+
+        PlotGenRecord();
     }
 
     [Serializable]
     private class GenSummary {
         public NuralNetworkModel BestModel;
         public int GenNum;
-        public float Score;
+        public float AvgScore;
         public float MaxScore;
         public long FirstGenStartTime;
         public int GamesPerIteration;
+        public int LastRecordBrokenGensAgo;
+        public int DecrementsWithNoRecord;
+        public bool IsConverging;
     }
 
     [Serializable]

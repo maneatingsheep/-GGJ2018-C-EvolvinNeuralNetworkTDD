@@ -119,15 +119,15 @@ public class NuralNetworkModel {
 
     }
 
-    internal static void DecreaseSteps(bool isReverse) {
-        if (isReverse) {
-            SMALL_VARIATION_SIZE *= 4;
-            OFFSET_VARIATION_SIZE *= 4;
-            BIG_VARIATION_SIZE *= 4;
+    internal static void ChangeSteps(bool isConverging) {
+        if (isConverging) {
+            SMALL_VARIATION_SIZE /= 1.7f;
+            OFFSET_VARIATION_SIZE /= 1.7f;
+            BIG_VARIATION_SIZE /= 1.7f;
         } else {
-            SMALL_VARIATION_SIZE /= 2;
-            OFFSET_VARIATION_SIZE /= 2;
-            BIG_VARIATION_SIZE /= 2;
+            SMALL_VARIATION_SIZE *= 1.4f;
+            OFFSET_VARIATION_SIZE *= 1.4f;
+            BIG_VARIATION_SIZE *= 1.4f;
         }
         
         
@@ -137,9 +137,9 @@ public class NuralNetworkModel {
     }
 
     internal static void ResetSteps() {
-        SMALL_VARIATION_SIZE = 0.1f;
+        SMALL_VARIATION_SIZE = 0.6f;
         OFFSET_VARIATION_SIZE = 0.01f;
-        BIG_VARIATION_SIZE = 0.5f;
+        BIG_VARIATION_SIZE = 1.0f;
 
         HALF_BIG_VARIATION_SIZE = BIG_VARIATION_SIZE / 2f;
         HALF_SMALL_VARIATION_SIZE = SMALL_VARIATION_SIZE / 2f;
