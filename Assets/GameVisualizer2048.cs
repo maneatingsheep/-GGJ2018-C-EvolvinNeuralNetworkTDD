@@ -19,8 +19,8 @@ public class GameVisualizer2048 : BaseGameVisualizer {
         }
     }
 
-	override internal void ResetGame() {
-        SrcSimulation.Game.ResetGame((int)DateTime.Now.Ticks);
+	override internal void ResetGame(int seed) {
+        SrcSimulation.Game.ResetGame(seed);
         RenderTiles();
     }
 

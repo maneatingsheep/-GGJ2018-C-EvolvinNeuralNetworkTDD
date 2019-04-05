@@ -16,6 +16,10 @@ public class LearningManager : MonoBehaviour {
     public Text StateText;
     public Text ScaleText;
 
+    public InputField MutationRateInput;
+    public InputField MutationChanceInput;
+    public Button MutationChanegButt;
+
     public string FilesLocation;
     public InputField NetworkToLoadFld;
     public string FileToLoad;
@@ -27,14 +31,14 @@ public class LearningManager : MonoBehaviour {
     private const int SIMULATIONS_NUM = 500;
     private const int MAX_TREAD_NUM = 10;
 
-    private const int GENS_WITHOUT_RECORD_LIMIT = 40;
+    //private const int GENS_WITHOUT_RECORD_LIMIT = 100;
 
     private const int _plotResX = 400;
     private const int _plotResY = 200;
 
 
-    private int[] _iterationsNumSteps = new int[1] { 100 };
-    private int[] _iterationsNumVals = new int[2] { 10, 5};
+    private int[] _iterationsNumSteps = new int[] {};
+    private int[] _iterationsNumVals = new int[1] {1};
 
     internal int CurrentGen = 0;
 
@@ -49,16 +53,16 @@ public class LearningManager : MonoBehaviour {
     public float AllTimesMaxScore = float.MinValue;
     public float LastGenAvgScore = 0;
     public float AllTimesAvgScore = float.MinValue;
+    public float AllTimesAvgScoreGen = 0;
 
     public int LastRecordBrokenGensAgo = 0;
     public int DecrementsWithNoRecord = 0;
-    public bool IsConverging; 
 
     public bool LoadedFromFile = false;
 
 
     internal Simulation[] Simulations;
-    internal Simulation ParentSimulation;
+    internal NuralNetworkModel[] Parents;
 
     internal Thread[] Threads;
 
@@ -78,18 +82,32 @@ public class LearningManager : MonoBehaviour {
     private bool _isTRacking = true;
 
     public void Init() {
-        Simulations = new Simulation[SIMULATIONS_NUM];
-        for (int i = 0; i < SIMULATIONS_NUM; i++) {
-            Simulations[i] = new Simulation();
-        }
-
-        ParentSimulation = new Simulation();
-
         _rnd = new System.Random();
 
+
+        Simulations = new Simulation[SIMULATIONS_NUM];
+        for (int i = 0; i < SIMULATIONS_NUM; i++) {
+            Simulations[i] = new Simulation(_rnd);
+        }
+
+        Parents = new NuralNetworkModel[SIMULATIONS_NUM];
+        for (int i = 0; i < SIMULATIONS_NUM; i++) {
+            Parents[i] = new NuralNetworkModel(_rnd);
+        }
+
         Threads = new Thread[SIMULATIONS_NUM];
-       
+
+        MutationRateInput.text = NuralNetworkModel.MUTATION_RATE.ToString();
+
+        MutationChanceInput.text = NuralNetworkModel.MUTATION_CHANCE.ToString();
+
         PlotGenRecord();
+    }
+
+    public void ChangeMutationRate() {
+        NuralNetworkModel.MUTATION_RATE = float.Parse(MutationRateInput.text);
+
+        NuralNetworkModel.MUTATION_CHANCE = float.Parse(MutationChanceInput.text);
     }
 
     void Update() {
@@ -119,6 +137,16 @@ public class LearningManager : MonoBehaviour {
 
                     //run simulation batch
 
+#if UNITY_EDITOR
+                    
+
+
+                    for (int i = 0; i < SIMULATIONS_NUM; i++) {
+                        Simulations[i].RunOneTime();
+                        _testedSimulations++;
+                    }
+
+#else
                     _batchNumOfThreads = Mathf.Min(MAX_TREAD_NUM, SIMULATIONS_NUM - _testedSimulations);
 
                     _testedSimulations += _batchNumOfThreads;
@@ -129,8 +157,11 @@ public class LearningManager : MonoBehaviour {
                     
 
                     _anyThreadsRunning = true;
+
+#endif
                 } else {
                     _anyThreadsRunning = false;
+
                     for (int i = 0; i < _batchNumOfThreads; i++) {
                         _anyThreadsRunning |= Threads[_testedSimulations - 1 - i].IsAlive;
                     }
@@ -147,18 +178,7 @@ public class LearningManager : MonoBehaviour {
             //conclude gen
             ConcludeGen();
 
-            if (LastRecordBrokenGensAgo > GENS_WITHOUT_RECORD_LIMIT) {
-                if (DecrementsWithNoRecord == 3) {
-                    IsConverging = false;
-                } else {
-                    DecrementsWithNoRecord++;
-                }
-
-                LastRecordBrokenGensAgo = 0;
-
-                NuralNetworkModel.ChangeSteps(IsConverging);
-                
-            }
+            
 
             CurrentGen++;
             _learnState = LearnStates.Idle;
@@ -193,13 +213,26 @@ public class LearningManager : MonoBehaviour {
 
         if (gamesPIChanged || LoadedFromFile) {
             Simulation.Seeds = new int[GamesPerIteration];
+            //UNMARK FOR CONSTANT GAME
             for (int i = 0; i < GamesPerIteration; i++) {
                 Simulation.Seeds[i] = _rnd.Next();
             }
         }
 
+        //UNMARK FOR RANDOM GAME
+        for (int i = 0; i < GamesPerIteration; i++) {
+            Simulation.Seeds[i] = _rnd.Next();
+        }
+
         foreach (Simulation s in Simulations) {
-            s.CreateNextGen(ParentSimulation, _rnd);
+            if (CurrentGen > 0) {
+                NuralNetworkModel parentModel1 = PickParent(null);
+                NuralNetworkModel parentModel2 = PickParent(parentModel1);
+
+
+                NuralNetworkModel.PrepareNextGen(parentModel1, parentModel2, s.NuralNetwork, _rnd);
+            }
+            
             s.GamesPerIteration = GamesPerIteration;
             if (gamesPIChanged || LoadedFromFile) {
                 s.Scores = new float[GamesPerIteration];
@@ -209,11 +242,29 @@ public class LearningManager : MonoBehaviour {
         LoadedFromFile = false;
     }
 
-    private void ConcludeGen() {
-        Array.Sort(Simulations, delegate (Simulation a, Simulation b) {
-            return b.OverallScore.CompareTo(a.OverallScore);
-        });
+    private NuralNetworkModel PickParent(NuralNetworkModel avoid) {
+        bool repeat = false;
+        do {
+            repeat = false;
+            float randomp = UnityEngine.Random.value;
+            foreach (Simulation s in Simulations) {
+                randomp -= s.Fitness;
+                if (randomp <= 0) {
+                    if (s.NuralNetwork != avoid) {
+                        return s.NuralNetwork;
+                    } else {
+                        repeat = true;
+                        break;
+                    }
+                }
+            }
+        } while (repeat);
 
+        return null;
+    }
+
+    private void ConcludeGen() {
+        
         LastRunTime = DateTime.Now - _startTime;
 
         LastGenMaxScore = Simulations[0].OverallScore;
@@ -222,25 +273,47 @@ public class LearningManager : MonoBehaviour {
         foreach (Simulation s in Simulations) {
             LastGenAvgScore += s.OverallScore;
         }
+        foreach (Simulation s in Simulations) {
+            s.Fitness = s.OverallScore / LastGenAvgScore;
+        }
+        for (int i = 0; i < SIMULATIONS_NUM; i++) {
+            NuralNetworkModel.Duplicate(Simulations[i].NuralNetwork, Parents[i]);
+            
+        }
+
         LastGenAvgScore /= Simulations.Length;
 
         LastRecordBrokenGensAgo++;
 
         if (LastGenAvgScore > AllTimesAvgScore) {
             AllTimesAvgScore = LastGenAvgScore;
-            SaveNetworkToFile(true);
+            AllTimesAvgScoreGen = CurrentGen;
+            //SaveNetworkToFile(true);
             LastRecordBrokenGensAgo = 0;
             DecrementsWithNoRecord = 0;
-            IsConverging = true;
             DecrementsWithNoRecord = 0;
         }
 
-        AllTimesMaxScore = Mathf.Max(AllTimesMaxScore, Simulations[0].OverallScore);
+        Array.Sort<Simulation>(Simulations, (a, b) => {
+            return (a.Fitness < b.Fitness)?(1):((a.Fitness > b.Fitness) ? (-1) : (0));
+        });
+
+        if (Simulations[0].OverallScore > AllTimesMaxScore) {
+            AllTimesMaxScore = Simulations[0].OverallScore;
+        }
+
+        
+
+        /*if (LastRecordBrokenGensAgo > GENS_WITHOUT_RECORD_LIMIT) {
+            
+            LastRecordBrokenGensAgo = 0;
+            NuralNetworkModel.Duplicate(RecordSimulation.NuralNetwork, ParentSimulation.NuralNetwork);
+
+            NuralNetworkModel.ReduceMutationRate();
+
+        }*/
 
         SaveNetworkToFile(false);
-
-        //use best model as parent
-        NuralNetworkModel.Duplicate(Simulations[0].NuralNetwork, ParentSimulation.NuralNetwork);
 
         PlotGenRecord();
 
@@ -250,7 +323,8 @@ public class LearningManager : MonoBehaviour {
 
     private void SaveNetworkToFile(bool isRecord) {
         GenSummary summary = new GenSummary();
-        summary.BestModel = ParentSimulation.NuralNetwork;
+        //summary.LastModel = ParentSimulation.NuralNetwork;
+        //summary.RecordModel = ParentSimulation.NuralNetwork;
         summary.AvgScore = LastGenAvgScore;
         summary.MaxScore = LastGenMaxScore;
         summary.GenNum = CurrentGen;
@@ -258,11 +332,10 @@ public class LearningManager : MonoBehaviour {
         summary.FirstGenStartTime = _firstGenStartTime;
         summary.LastRecordBrokenGensAgo = LastRecordBrokenGensAgo;
         summary.DecrementsWithNoRecord = DecrementsWithNoRecord;
-        summary.IsConverging = IsConverging;
 
         string dirPath = String.Format("{0}/{1}", FilesLocation, _firstGenStartTime);
 
-        if (!Directory.Exists(dirPath)) {
+        /*if (!Directory.Exists(dirPath)) {
             Directory.CreateDirectory(dirPath);
         }
 
@@ -272,22 +345,22 @@ public class LearningManager : MonoBehaviour {
             destination = String.Format("{0}/GEN_{1}_SCORE_{2}", dirPath, CurrentGen, LastGenMaxScore);
         } else {
             destination = String.Format("{0}/latest", dirPath);
-        }
+        }*/
 
-        if (File.Exists(destination)) {
+        /*if (File.Exists(destination)) {
             file = File.OpenWrite(destination);
         } else {
             file = File.Create(destination);
         }
 
         _bf.Serialize(file, summary);
-        file.Close();
+        file.Close();*/
 
         if (!isRecord) {
             GenRecord.Add(summary);
         }
 
-        destination = String.Format("{0}/record", dirPath);
+        /*destination = String.Format("{0}/record", dirPath);
 
         if (File.Exists(destination)) {
             file = File.OpenWrite(destination);
@@ -296,10 +369,10 @@ public class LearningManager : MonoBehaviour {
         }
 
         _bf.Serialize(file, GenRecord);
-        file.Close();
+        file.Close();*/
     }
 
-    public void LoadNetworkFromFile() {
+    /*public void LoadNetworkFromFile() {
         string destination = String.Format("{0}/{1}/{2}", FilesLocation, NetworkToLoadFld.text, FileToLoad);
         StreamReader reader = new StreamReader(destination);
         GenSummary summary = _bf.Deserialize(reader.BaseStream) as GenSummary;
@@ -307,12 +380,12 @@ public class LearningManager : MonoBehaviour {
 
         CurrentGen = summary.GenNum;
         GamesPerIteration = summary.GamesPerIteration;
-        NuralNetworkModel.Duplicate(summary.BestModel, ParentSimulation.NuralNetwork);
+        NuralNetworkModel.Duplicate(summary.LastModel, ParentSimulation.NuralNetwork);
+        NuralNetworkModel.Duplicate(summary.RecordModel, RecordSimulation.NuralNetwork);
         AllTimesMaxScore = summary.MaxScore;
         _firstGenStartTime = summary.FirstGenStartTime;
         LastRecordBrokenGensAgo = summary.LastRecordBrokenGensAgo;
         DecrementsWithNoRecord = summary.DecrementsWithNoRecord;
-        IsConverging = summary.IsConverging;
 
         destination = String.Format("{0}/{1}/{2}", FilesLocation, NetworkToLoadFld.text, "record");
         reader = new StreamReader(destination);
@@ -322,12 +395,12 @@ public class LearningManager : MonoBehaviour {
         LoadedFromFile = true;
 
         PlotGenRecord();
-    }
+    }*/
 
     private void PlotGenRecord() {
         ScoreText.text = LastGenAvgScore + " / " + AllTimesMaxScore;
-        GenText.text = "LastGen: " + CurrentGen + " / " + LastRecordBrokenGensAgo + " Small Step: " + NuralNetworkModel.SMALL_VARIATION_SIZE;
-        TimeText.text = "runtime: " + LastRunTime.TotalSeconds + "sec";
+        GenText.text = "LastGen: " + CurrentGen + " / " + LastRecordBrokenGensAgo + " Small Step: " + NuralNetworkModel.MUTATION_RATE;
+        TimeText.text = "runtime: " + LastRunTime.TotalSeconds + "sec Num of games: " + GamesPerIteration;
         ScaleText.text = "Scale: " + ChartScale + "Offset: " + _chartOffset;
 
         if (_isTRacking) {
@@ -346,9 +419,15 @@ public class LearningManager : MonoBehaviour {
                     col = Color.black;
                 } else {
                     if (j < GenRecord[i + _chartOffset].AvgScore * ChartScale) {
-                        col = Color.red;
+                        if (i + _chartOffset == AllTimesAvgScoreGen) {
+                            col = Color.yellow;
+                        } else {
+                            col = Color.red;
+                        }
                     } else if (j < GenRecord[i + _chartOffset].MaxScore * ChartScale) {
-                        col = Color.green;
+                        
+                        col = Color.blue;
+                        
                     } else {
                         col = Color.blue;
                     }
@@ -393,7 +472,8 @@ public class LearningManager : MonoBehaviour {
 
     [Serializable]
     private class GenSummary {
-        public NuralNetworkModel BestModel;
+        public NuralNetworkModel RecordModel;
+        public NuralNetworkModel LastModel;
         public int GenNum;
         public float AvgScore;
         public float MaxScore;
@@ -401,12 +481,9 @@ public class LearningManager : MonoBehaviour {
         public int GamesPerIteration;
         public int LastRecordBrokenGensAgo;
         public int DecrementsWithNoRecord;
-        public bool IsConverging;
+
+        
     }
 
-    [Serializable]
-    private class FullSummary {
-        public GenSummary[] Gens;
-    }
 }
 

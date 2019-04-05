@@ -1,6 +1,8 @@
 ﻿
 
 using System;
+using UnityEngine;
+using static NuralNetworkModel;
 
 public class Simulation {
 
@@ -18,15 +20,14 @@ public class Simulation {
     public float[] Scores;
     public float MaxGameScore = 0;
     public float OverallScore = 0;
+    public float AvgScore = 0;
+    public float BestScore = 0;
+    public float Fitness = 0;
 
-    internal Simulation() {
+    internal Simulation(System.Random rnd) {
         Game = ClassFactory.CreateGameModel();
         Game.InitGame();
-        NuralNetwork = new NuralNetworkModel();
-    }
-
-    internal void CreateNextGen(Simulation parentSimulation, System.Random rnd) {
-        NuralNetworkModel.PrepareNextGen(parentSimulation.NuralNetwork, NuralNetwork, rnd);
+        NuralNetwork = new NuralNetworkModel(rnd);
     }
 
     internal void RunOneTime() {
@@ -45,17 +46,32 @@ public class Simulation {
             Scores[CurrentGameIteration] = Game.GetScore();
         }
 
-        OverallScore = 0;
+        AvgScore = 0;
+        BestScore = 0;
         for (int i = 0; i < Scores.Length; i++) {
-            OverallScore += Scores[i];
+            AvgScore += Scores[i];
+            BestScore = Mathf.Max(Scores[i], BestScore);
         }
-        OverallScore /= Scores.Length;
+        AvgScore /= Scores.Length;
+        //BestScore /= Scores.Length;
+        //OverallScore = AvgScore + BestScore;
+        OverallScore = AvgScore;
 
     }
 
     internal bool PlayOneMove() {
         Game.GameStateToInputs(NuralNetwork.InputLayer);
-        int networkOutput = NuralNetwork.CalculateMove();
-        return Game.MakeMove(networkOutput);
+        NetworkOutput[] networkOutputs = NuralNetwork.CalculateMove();
+
+        /*bool moveMade = false;
+        for (int i = 0; i < networkOutputs.Length; i++) {
+            moveMade |= Game.MakeMove(networkOutputs[i].Position);
+            if (moveMade) {
+                break;
+            }
+        }
+
+        return !moveMade;*/
+        return !Game.MakeMove(networkOutputs[0].Position);
     }
 }

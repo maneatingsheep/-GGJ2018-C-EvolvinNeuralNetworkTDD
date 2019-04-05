@@ -215,7 +215,7 @@ public class Game2048 : GameModel {
 
                     if (merge) {
                         Tiles[ShiftScannerX][ShiftScannerY].Merged = true;
-                        mergeScore += (int)Math.Pow(2, Tiles[ShiftScannerX][ShiftScannerY].NumValue * 2);
+                        mergeScore += (int)Mathf.Pow(2, Tiles[ShiftScannerX][ShiftScannerY].NumValue);
                         Tiles[ShiftScannerX][ShiftScannerY].PossibleAction = LogicTile.ActionType.Grow;
                     }
 
@@ -256,9 +256,11 @@ public class Game2048 : GameModel {
             _moveCount++;
         }
 
-        _score += ((mergeScore <= 0) ? 0 : mergeScore);
+        if (moveMade) {
+            _score += ((mergeScore <= 0) ? 0 : mergeScore);
+        }
 
-        return !moveMade;
+        return moveMade;
 
     }
 
@@ -266,13 +268,17 @@ public class Game2048 : GameModel {
         //fill input
         for (int i = 0; i < Tiles.Length; i++) {
             for (int j = 0; j < Tiles[i].Length; j++) {
-                inputsToFill[i * SIDE_LEN + j] = Mathf.Pow(2, Tiles[i][j].NumValue);
+                //inputsToFill[i * SIDE_LEN + j] = Mathf.Pow(2, Tiles[i][j].NumValue) / 2048f;
+                inputsToFill[i * SIDE_LEN + j] = Tiles[i][j].NumValue;
             }
         }
     }
 
     override public float GetScore() {
-        return (_moveCount * 2) + _score / Mathf.Max(_moveCount, 1);
+        //return (_moveCount * 0.1f) + _score / Mathf.Max(_moveCount, 1);
+        //return _score + _moveCount/** 0.01f*/;
+        return (float)Math.Pow(_moveCount, 2);
+
     }
 
 }

@@ -54,7 +54,7 @@ public class FlowMaster : MonoBehaviour {
 
     public void StartReplay() {
         ScreenMode = ScreenModes.Play;
-        GameVis.ResetGame();
+        GameVis.ResetGame(Simulation.Seeds[0]);
         GameVis.IsPlaying = true;
     }
 
@@ -68,7 +68,7 @@ public class FlowMaster : MonoBehaviour {
     void Start () {
         BackToMenu();
         LearningMngr.Init();
-        GameVis.SrcSimulation = LearningMngr.ParentSimulation;
+        GameVis.SrcSimulation = LearningMngr.Simulations[0];
         GameVis.InitGameVis();
         ScreenMode = ScreenModes.Menu;
     }

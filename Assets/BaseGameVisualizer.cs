@@ -11,6 +11,6 @@ public abstract class BaseGameVisualizer : MonoBehaviour {
 
     abstract internal void InitGameVis();
 
-    abstract internal void ResetGame();
+    abstract internal void ResetGame(int seed);
 
 }
