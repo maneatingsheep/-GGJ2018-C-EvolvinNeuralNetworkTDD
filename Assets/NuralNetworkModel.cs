@@ -10,7 +10,7 @@ public class NuralNetworkModel {
     internal static int INPUT_SIZE = 16;
     internal static int OUTPUT_SIZE = 4;
 
-    internal static float MUTATION_SIZE = 2f;
+    internal static float MUTATION_SIZE = 0.1f;
     internal static float HALF_MUTATION_SIZE;
 
     internal static float MUTATION_Rate = 0.1f;
@@ -149,10 +149,11 @@ public class NuralNetworkModel {
                 }
             }
 
-            for (int k = 0; k < src.Biases.Length; k++) {
-                for (int j = 0; j < src.Biases[k].Length; j++) {
-                    dest.Biases[k][j] = src.Biases[k][j];
-                }
+        }
+
+        for (int k = 0; k < src.Biases.Length; k++) {
+            for (int j = 0; j < src.Biases[k].Length; j++) {
+                dest.Biases[k][j] = src.Biases[k][j];
             }
         }
 

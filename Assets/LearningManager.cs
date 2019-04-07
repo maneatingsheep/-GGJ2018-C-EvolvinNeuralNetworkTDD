@@ -246,11 +246,12 @@ public class LearningManager : MonoBehaviour {
         do {
             repeat = false;
             float randomp = UnityEngine.Random.value;
-            foreach (Simulation s in Simulations) {
-                randomp -= s.Fitness;
+            for (int i = 0; i < SIMULATIONS_NUM; i++) {
+                randomp -= Simulations[i].Fitness;
                 if (randomp <= 0) {
-                    if (s.NuralNetwork != avoid) {
-                        return s.NuralNetwork;
+                    if (Parents[i] != avoid) {
+                        //print(s.Fitness);
+                        return Parents[i];
                     } else {
                         repeat = true;
                         break;
@@ -280,17 +281,18 @@ public class LearningManager : MonoBehaviour {
 
         foreach (Simulation s in Simulations) {
             LastGenAvgScore += s.OverallScore;
-            LastGenFitnessScore += Mathf.Pow(s.OverallScore, 1.2f);
+            LastGenFitnessScore += Mathf.Pow(s.OverallScore, 2f);
         }
 
         LastGenAvgScore /= Simulations.Length;
 
-
         for (int i = 0; i < SIMULATIONS_NUM; i++) {
-            Simulations[i].Fitness = Mathf.Pow(Simulations[i].OverallScore, 1.2f) / LastGenFitnessScore;
+            Simulations[i].Fitness = Mathf.Pow(Simulations[i].OverallScore, 2f) / LastGenFitnessScore;
             NuralNetworkModel.Duplicate(Simulations[i].NuralNetwork, Parents[i]);
             
         }
+
+
 
 
         LastRecordBrokenGensAgo++;
