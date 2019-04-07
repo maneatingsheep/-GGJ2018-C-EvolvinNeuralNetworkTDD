@@ -1,6 +1,5 @@
 ﻿
 
-using System;
 using UnityEngine;
 using static NuralNetworkModel;
 
@@ -15,7 +14,7 @@ public class Simulation {
     internal int CurrentGameIteration;
 
 
-    public int GamesPerIteration;
+    private int gamesPerIteration;
 
     public float[] Scores;
     public float MaxGameScore = 0;
@@ -23,6 +22,17 @@ public class Simulation {
     public float AvgScore = 0;
     public float BestScore = 0;
     public float Fitness = 0;
+
+    public int GamesPerIteration {
+        get {
+            return gamesPerIteration;
+        }
+
+        set {
+            gamesPerIteration = value;
+            Scores = new float[gamesPerIteration];
+        }
+    }
 
     internal Simulation(System.Random rnd) {
         Game = ClassFactory.CreateGameModel();
@@ -32,11 +42,11 @@ public class Simulation {
 
     internal void RunOneTime() {
         
-        for (int i = 0; i < Scores.Length; i++) {
+        for (int i = 0; i < gamesPerIteration; i++) {
             Scores[i] = 0;
         }
         
-        for (CurrentGameIteration = 0; CurrentGameIteration < GamesPerIteration; CurrentGameIteration++) {
+        for (CurrentGameIteration = 0; CurrentGameIteration < gamesPerIteration; CurrentGameIteration++) {
             Game.ResetGame(Seeds[CurrentGameIteration]);
             bool isGoodMove = true;
             while (isGoodMove) {
@@ -48,7 +58,7 @@ public class Simulation {
 
         AvgScore = 0;
         BestScore = 0;
-        for (int i = 0; i < Scores.Length; i++) {
+        for (int i = 0; i < gamesPerIteration; i++) {
             AvgScore += Scores[i];
             BestScore = Mathf.Max(Scores[i], BestScore);
         }

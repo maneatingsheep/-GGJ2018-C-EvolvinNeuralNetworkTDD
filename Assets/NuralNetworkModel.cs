@@ -5,15 +5,15 @@ public class NuralNetworkModel {
 
 
 
-    internal static int TOTAL_LAYERS_NUM = 5;
+    internal static int TOTAL_LAYERS_NUM = 4;
     internal static int HIDDEN_LAYERS_SIZE = 100;
     internal static int INPUT_SIZE = 16;
     internal static int OUTPUT_SIZE = 4;
 
-    internal static float MUTATION_RATE = 0.06f;
-    internal static float HALF_MUTATION_RATE = 0.03f;
+    internal static float MUTATION_SIZE = 2f;
+    internal static float HALF_MUTATION_SIZE;
 
-    internal static float MUTATION_CHANCE = 0.07f;
+    internal static float MUTATION_Rate = 0.1f;
     
     public enum ActivationFunctions { TanH, ReLU };
 
@@ -28,7 +28,9 @@ public class NuralNetworkModel {
     private NetworkOutput[] _networkOutputs;
 
     public NuralNetworkModel(System.Random rnd) {
-       
+
+        HALF_MUTATION_SIZE = MUTATION_SIZE / 2f;
+
         //weights
         Weights = new float[TOTAL_LAYERS_NUM - 1][][];
         Biases = new float[TOTAL_LAYERS_NUM - 1][];
@@ -65,9 +67,6 @@ public class NuralNetworkModel {
                 Biases[l][i] = (float)rnd.NextDouble() * 0.2f - 0.1f;
 
             }
-
-
-
 
         }
 
@@ -112,7 +111,7 @@ public class NuralNetworkModel {
             for (int j = 0; j < child.Weights[l].Length; j++) {
                 
                 for (int k = 0; k < child.Weights[l][j].Length; k++) {
-                    child.Weights[l][j][k] = BreedOneNode(parent1.Weights[l][j][k], parent1.Weights[l][j][k], rnd);
+                    child.Weights[l][j][k] = BreedOneNode(parent1.Weights[l][j][k], parent2.Weights[l][j][k], rnd);
                 }
             }
 
@@ -132,8 +131,8 @@ public class NuralNetworkModel {
         }
 
         double mutationChance = rnd.NextDouble();
-        if (mutationChance < MUTATION_CHANCE) {
-            retVal +=  ((float)rnd.NextDouble() * MUTATION_RATE) - HALF_MUTATION_RATE;
+        if (mutationChance < MUTATION_Rate) {
+            retVal +=  ((float)rnd.NextDouble() * MUTATION_SIZE) - HALF_MUTATION_SIZE;
         }
         
         return retVal;
@@ -161,8 +160,6 @@ public class NuralNetworkModel {
 
     internal NetworkOutput[] CalculateMove() {
 
-        //NormlizeLayer(Layers[0]);
-
         //fill layers
         for (int l = 0; l < TOTAL_LAYERS_NUM - 1; l++) {
             
@@ -173,7 +170,6 @@ public class NuralNetworkModel {
 
                 for (int i = 0; i < Layers[l].Length; i++) {
                     Layers[l + 1][j] += (Layers[l][i] * Weights[l][i][j]);
-                    //Layers[l + 1][j] += Activation((Layers[l][i] * Weights[l][i][j]), ActivationFunction[l + 1][j]);
                 }
 
                 //Layers[l + 1][j] /= Layers[l].Length;

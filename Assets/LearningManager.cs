@@ -28,7 +28,7 @@ public class LearningManager : MonoBehaviour {
 
     private enum LearnStates {Idle, Learning, FinishedLearning };
 
-    private const int SIMULATIONS_NUM = 500;
+    private const int SIMULATIONS_NUM = 1000;
     private const int MAX_TREAD_NUM = 10;
 
     //private const int GENS_WITHOUT_RECORD_LIMIT = 100;
@@ -97,17 +97,17 @@ public class LearningManager : MonoBehaviour {
 
         Threads = new Thread[SIMULATIONS_NUM];
 
-        MutationRateInput.text = NuralNetworkModel.MUTATION_RATE.ToString();
+        MutationRateInput.text = NuralNetworkModel.MUTATION_SIZE.ToString();
 
-        MutationChanceInput.text = NuralNetworkModel.MUTATION_CHANCE.ToString();
+        MutationChanceInput.text = NuralNetworkModel.MUTATION_Rate.ToString();
 
         PlotGenRecord();
     }
 
     public void ChangeMutationRate() {
-        NuralNetworkModel.MUTATION_RATE = float.Parse(MutationRateInput.text);
+        NuralNetworkModel.MUTATION_SIZE = float.Parse(MutationRateInput.text);
 
-        NuralNetworkModel.MUTATION_CHANCE = float.Parse(MutationChanceInput.text);
+        NuralNetworkModel.MUTATION_Rate = float.Parse(MutationChanceInput.text);
     }
 
     void Update() {
@@ -220,9 +220,9 @@ public class LearningManager : MonoBehaviour {
         }
 
         //UNMARK FOR RANDOM GAME
-        for (int i = 0; i < GamesPerIteration; i++) {
+        /*for (int i = 0; i < GamesPerIteration; i++) {
             Simulation.Seeds[i] = _rnd.Next();
-        }
+        }*/
 
         foreach (Simulation s in Simulations) {
             if (CurrentGen > 0) {
@@ -233,9 +233,8 @@ public class LearningManager : MonoBehaviour {
                 NuralNetworkModel.PrepareNextGen(parentModel1, parentModel2, s.NuralNetwork, _rnd);
             }
             
-            s.GamesPerIteration = GamesPerIteration;
             if (gamesPIChanged || LoadedFromFile) {
-                s.Scores = new float[GamesPerIteration];
+                s.GamesPerIteration = GamesPerIteration;
             }
         }
 
@@ -265,23 +264,34 @@ public class LearningManager : MonoBehaviour {
 
     private void ConcludeGen() {
         
-        LastRunTime = DateTime.Now - _startTime;
+
+        Array.Sort<Simulation>(Simulations, (a, b) => {
+            return (a.OverallScore < b.OverallScore) ? (1) : ((a.OverallScore > b.OverallScore) ? (-1) : (0));
+        });
+
+        if (Simulations[0].OverallScore > AllTimesMaxScore) {
+            AllTimesMaxScore = Simulations[0].OverallScore;
+        }
 
         LastGenMaxScore = Simulations[0].OverallScore;
 
         LastGenAvgScore = 0;
+        float LastGenFitnessScore = 0;
+
         foreach (Simulation s in Simulations) {
             LastGenAvgScore += s.OverallScore;
+            LastGenFitnessScore += Mathf.Pow(s.OverallScore, 1.2f);
         }
-        foreach (Simulation s in Simulations) {
-            s.Fitness = s.OverallScore / LastGenAvgScore;
-        }
+
+        LastGenAvgScore /= Simulations.Length;
+
+
         for (int i = 0; i < SIMULATIONS_NUM; i++) {
+            Simulations[i].Fitness = Mathf.Pow(Simulations[i].OverallScore, 1.2f) / LastGenFitnessScore;
             NuralNetworkModel.Duplicate(Simulations[i].NuralNetwork, Parents[i]);
             
         }
 
-        LastGenAvgScore /= Simulations.Length;
 
         LastRecordBrokenGensAgo++;
 
@@ -291,16 +301,10 @@ public class LearningManager : MonoBehaviour {
             //SaveNetworkToFile(true);
             LastRecordBrokenGensAgo = 0;
             DecrementsWithNoRecord = 0;
-            DecrementsWithNoRecord = 0;
         }
 
-        Array.Sort<Simulation>(Simulations, (a, b) => {
-            return (a.Fitness < b.Fitness)?(1):((a.Fitness > b.Fitness) ? (-1) : (0));
-        });
-
-        if (Simulations[0].OverallScore > AllTimesMaxScore) {
-            AllTimesMaxScore = Simulations[0].OverallScore;
-        }
+       
+        LastRunTime = DateTime.Now - _startTime;
 
         
 
@@ -399,7 +403,7 @@ public class LearningManager : MonoBehaviour {
 
     private void PlotGenRecord() {
         ScoreText.text = LastGenAvgScore + " / " + AllTimesMaxScore;
-        GenText.text = "LastGen: " + CurrentGen + " / " + LastRecordBrokenGensAgo + " Small Step: " + NuralNetworkModel.MUTATION_RATE;
+        GenText.text = "LastGen: " + CurrentGen + " / " + LastRecordBrokenGensAgo + " Small Step: " + NuralNetworkModel.MUTATION_SIZE;
         TimeText.text = "runtime: " + LastRunTime.TotalSeconds + "sec Num of games: " + GamesPerIteration;
         ScaleText.text = "Scale: " + ChartScale + "Offset: " + _chartOffset;
 

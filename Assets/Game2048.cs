@@ -276,8 +276,8 @@ public class Game2048 : GameModel {
 
     override public float GetScore() {
         //return (_moveCount * 0.1f) + _score / Mathf.Max(_moveCount, 1);
-        //return _score + _moveCount/** 0.01f*/;
-        return (float)Math.Pow(_moveCount, 2);
+        return _score + _moveCount/** 0.01f*/;
+        //return (float)Math.Pow(_moveCount, 1.2f);
 
     }
 
