@@ -5,7 +5,7 @@ public class NuralNetworkModel {
 
 
 
-    internal static int TOTAL_LAYERS_NUM = 4;
+    internal static int TOTAL_LAYERS_NUM = 5;
     internal static int HIDDEN_LAYERS_SIZE = 100;
     internal static int INPUT_SIZE = 16;
     internal static int OUTPUT_SIZE = 4;
@@ -15,7 +15,7 @@ public class NuralNetworkModel {
 
     internal static float MUTATION_Rate = 0.1f;
     
-    public enum ActivationFunctions { TanH, ReLU };
+    //public enum ActivationFunctions { TanH, ReLU };
 
     public float[][] Layers;
     public float[][][] Weights;
@@ -177,9 +177,9 @@ public class NuralNetworkModel {
 
                 Layers[l + 1][j] += Biases[l][j];
 
-                Layers[l + 1][j] = (float)Math.Tanh(Layers[l + 1][j]);
+                //Layers[l + 1][j] = (float)Math.Tanh(Layers[l + 1][j]);
 
-                //Layers[l + 1][j] = 1 / (1 + (float)Math.Exp(-Layers[l + 1][j]));
+                Layers[l + 1][j] = 1 / (1 + (float)Math.Exp(-Layers[l + 1][j]));
 
 
             }

@@ -14,7 +14,7 @@ public class Game2048 : GameModel {
 
     internal const int SIDE_LEN = 4;
     internal const int STARTING_PICIES = 2;
-    private float[] SPAWNING_CHANCE = new float[] { 0.85f, 0.15f };
+    private float[] SPAWNING_CHANCE = new float[] { 0.9f, 0.10f };
 
 
     private int ScanInitialX;
@@ -266,10 +266,18 @@ public class Game2048 : GameModel {
 
     override public void GameStateToInputs(float[] inputsToFill) {
         //fill input
+        /*int maxVal = 0;
+        for (int i = 0; i < Tiles.Length; i++) {
+            for (int j = 0; j < Tiles[i].Length; j++) {
+                maxVal = Math.Max(maxVal, Tiles[i][j].NumValue);
+            }
+        }*/
+
         for (int i = 0; i < Tiles.Length; i++) {
             for (int j = 0; j < Tiles[i].Length; j++) {
                 //inputsToFill[i * SIDE_LEN + j] = Mathf.Pow(2, Tiles[i][j].NumValue) / 2048f;
-                inputsToFill[i * SIDE_LEN + j] = Tiles[i][j].NumValue;
+                inputsToFill[i * SIDE_LEN + j] = Tiles[i][j].NumValue / 10f;
+                //inputsToFill[i * SIDE_LEN + j] = Tiles[i][j].NumValue / maxVal;
             }
         }
     }

@@ -28,7 +28,7 @@ public class LearningManager : MonoBehaviour {
 
     private enum LearnStates {Idle, Learning, FinishedLearning };
 
-    private const int SIMULATIONS_NUM = 1000;
+    private const int SIMULATIONS_NUM = 500;
     private const int MAX_TREAD_NUM = 10;
 
     //private const int GENS_WITHOUT_RECORD_LIMIT = 100;
@@ -220,9 +220,9 @@ public class LearningManager : MonoBehaviour {
         }
 
         //UNMARK FOR RANDOM GAME
-        /*for (int i = 0; i < GamesPerIteration; i++) {
+        for (int i = 0; i < GamesPerIteration; i++) {
             Simulation.Seeds[i] = _rnd.Next();
-        }*/
+        }
 
         foreach (Simulation s in Simulations) {
             if (CurrentGen > 0) {
