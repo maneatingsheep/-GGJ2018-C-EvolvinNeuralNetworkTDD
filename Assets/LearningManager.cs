@@ -28,8 +28,8 @@ public class LearningManager : MonoBehaviour {
 
     private enum LearnStates {Idle, Learning, FinishedLearning };
 
-    private const int SIMULATIONS_NUM = 500;
-    private const int MAX_TREAD_NUM = 10;
+    private const int SIMULATIONS_NUM = 200;
+    private const int MAX_TREAD_NUM = 3;
 
     //private const int GENS_WITHOUT_RECORD_LIMIT = 100;
 
@@ -100,6 +100,8 @@ public class LearningManager : MonoBehaviour {
         MutationRateInput.text = NuralNetworkModel.MUTATION_SIZE.ToString();
 
         MutationChanceInput.text = NuralNetworkModel.MUTATION_Rate.ToString();
+
+        Simulation.Seeds = new int[_iterationsNumVals[0]];
 
         PlotGenRecord();
     }
@@ -281,7 +283,7 @@ public class LearningManager : MonoBehaviour {
 
         foreach (Simulation s in Simulations) {
             LastGenAvgScore += s.OverallScore;
-            LastGenFitnessScore += Mathf.Pow(s.OverallScore, 2f);
+            LastGenFitnessScore += Mathf.Pow(s.OverallScore, 1.05f);
         }
 
         LastGenAvgScore /= Simulations.Length;

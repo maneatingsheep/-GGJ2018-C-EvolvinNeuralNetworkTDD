@@ -82,6 +82,7 @@ public class Simulation {
         }
 
         return !moveMade;*/
+
         return !Game.MakeMove(networkOutputs[0].Position);
     }
 }
