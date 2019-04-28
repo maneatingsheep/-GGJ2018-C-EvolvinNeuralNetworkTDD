@@ -13,6 +13,7 @@ public class GameNumberReader : GameModel {
     static private bool isInit = false;
 
     public int imgIndex;
+    public int lastIndex;
     public int imgCount;
     private int score;
 
@@ -37,6 +38,8 @@ public class GameNumberReader : GameModel {
     }
 
     override public void ResetGame(int seed) {
+        lastIndex = 0;
+        _rnd = new System.Random(seed);
         imgCount = 0;
         score = 0;
     }
@@ -51,12 +54,15 @@ public class GameNumberReader : GameModel {
         }
 
         imgCount++;
-        imgIndex = Random.Range(0, 4999);
-        if (!IsTraining) {
-            imgIndex += 5000;
-        }
 
-        return imgCount < 500;
+        lastIndex = imgIndex;
+
+        imgIndex = _rnd.Next(3000);
+        /*if (!IsTraining) {
+            imgIndex += 3001;
+        }*/
+
+        return imgCount < 100;
     }
 
     override public void GameStateToInputs(float[] inputsToFill) {

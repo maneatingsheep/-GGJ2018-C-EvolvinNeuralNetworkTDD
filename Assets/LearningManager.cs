@@ -28,8 +28,8 @@ public class LearningManager : MonoBehaviour {
 
     private enum LearnStates {Idle, Learning, FinishedLearning };
 
-    private const int SIMULATIONS_NUM = 200;
-    private const int MAX_TREAD_NUM = 3;
+    private const int SIMULATIONS_NUM = 50;
+    private const int MAX_TREAD_NUM = 10;
 
     //private const int GENS_WITHOUT_RECORD_LIMIT = 100;
 
@@ -121,18 +121,20 @@ public class LearningManager : MonoBehaviour {
             CreateGen();
 
             //run one gen
-            for (int i = 0; i < SIMULATIONS_NUM; i++) {
-                Threads[i] = new Thread(Simulations[i].RunOneTime);
-            }
+            //if (Threads[0] == null) {
+                for (int i = 0; i < SIMULATIONS_NUM; i++) {
+                    Threads[i] = new Thread(Simulations[i].RunOneTime);
+                }
+            //}
+            
             _testedSimulations = 0;
 
             _anyThreadsRunning = false;
             _batchNumOfThreads = 0;
             _learnState = LearnStates.Learning;
             StateText.text = "Learning";
-        }
 
-        if (_learnState == LearnStates.Learning) {
+        } else if (_learnState == LearnStates.Learning) {
             if (_testedSimulations < SIMULATIONS_NUM || _anyThreadsRunning) {
                 if (!_anyThreadsRunning ) {
 

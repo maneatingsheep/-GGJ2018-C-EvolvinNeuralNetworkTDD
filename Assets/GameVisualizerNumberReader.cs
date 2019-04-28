@@ -29,7 +29,7 @@ public class GameVisualizerNumberReader : BaseGameVisualizer {
             int count = 0;
             for (int i = 0; i < game.imageSideSize; i++) {
                 for (int j = 0; j < game.imageSideSize; j++) {
-                    pixel = GameNumberReader.ImagesTest[game.ImagesOffset + (game.imgIndex - 1) * game.imageArea + count]; //-1 because the index moved
+                    pixel = GameNumberReader.ImagesTest[game.ImagesOffset + game.lastIndex * game.imageArea + count]; //-1 because the index moved
                     DisplayTexture.SetPixel(j, game.imageSideSize - 1 - i, new Color(pixel / 255f, pixel / 255f, pixel / 255f));
                     count++;
                 }
@@ -41,7 +41,7 @@ public class GameVisualizerNumberReader : BaseGameVisualizer {
             
 
 
-            DisplayLabel.text = GameNumberReader.LabelsTest[game.LabelsOffset + (game.imgIndex - 1)].ToString(); //-1 because the index moved
+            DisplayLabel.text = GameNumberReader.LabelsTest[game.LabelsOffset + game.lastIndex].ToString(); //-1 because the index moved
             DisplayGuess.text = game.lastGuess.ToString(); //-1 because the index moved
 
             _lastMoveTime = Time.time;

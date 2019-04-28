@@ -5,12 +5,12 @@ public class NuralNetworkModel {
 
 
 
-    internal static int TOTAL_LAYERS_NUM = 4;
-    internal static int HIDDEN_LAYERS_SIZE = 50;
+    internal static int TOTAL_LAYERS_NUM = 3;
+    internal static int HIDDEN_LAYERS_SIZE = 100;
     internal static int INPUT_SIZE = 28 * 28;
     internal static int OUTPUT_SIZE = 10;
 
-    internal static float MUTATION_SIZE = 0.5f;
+    internal static float MUTATION_SIZE = 0.4f;
     internal static float HALF_MUTATION_SIZE;
 
     internal static float MUTATION_Rate = 0.1f;
