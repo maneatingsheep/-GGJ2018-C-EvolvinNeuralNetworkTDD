@@ -62,7 +62,7 @@ public class GameNumberReader : GameModel {
             imgIndex += 3001;
         }*/
 
-        return imgCount < 100;
+        return imgCount < 500;
     }
 
     override public void GameStateToInputs(float[] inputsToFill) {

@@ -22,13 +22,12 @@ public class LearningManager : MonoBehaviour {
 
     public string FilesLocation;
     public InputField NetworkToLoadFld;
-    public string FileToLoad;
-
+    
     public float ChartScale;
 
     private enum LearnStates {Idle, Learning, FinishedLearning };
 
-    private const int SIMULATIONS_NUM = 50;
+    private const int SIMULATIONS_NUM = 100;
     private const int MAX_TREAD_NUM = 10;
 
     //private const int GENS_WITHOUT_RECORD_LIMIT = 100;
@@ -253,13 +252,13 @@ public class LearningManager : MonoBehaviour {
             for (int i = 0; i < SIMULATIONS_NUM; i++) {
                 randomp -= Simulations[i].Fitness;
                 if (randomp <= 0) {
-                    if (Parents[i] != avoid) {
+                    //if (Parents[i] != avoid) {
                         //print(s.Fitness);
                         return Parents[i];
-                    } else {
+                    /*} else {
                         repeat = true;
                         break;
-                    }
+                    }*/
                 }
             }
         } while (repeat);
@@ -297,22 +296,21 @@ public class LearningManager : MonoBehaviour {
         }
 
 
-
-
         LastRecordBrokenGensAgo++;
+
+        LastRunTime = DateTime.Now - _startTime;
+
+        GenSummary summary = GetGenSummary();
 
         if (LastGenAvgScore > AllTimesAvgScore) {
             AllTimesAvgScore = LastGenAvgScore;
             AllTimesAvgScoreGen = CurrentGen;
-            //SaveNetworkToFile(true);
+            SaveNetworkToFile(summary, true);
             LastRecordBrokenGensAgo = 0;
             DecrementsWithNoRecord = 0;
         }
 
-       
-        LastRunTime = DateTime.Now - _startTime;
 
-        
 
         /*if (LastRecordBrokenGensAgo > GENS_WITHOUT_RECORD_LIMIT) {
             
@@ -323,18 +321,30 @@ public class LearningManager : MonoBehaviour {
 
         }*/
 
-        SaveNetworkToFile(false);
+        //SaveNetworkToFile(summary, false);
+
+
+        summary.Parents = null; //no need to save the parents for the record
+        GenRecord.Add(summary);
 
         PlotGenRecord();
 
         
 
+
     }
 
-    private void SaveNetworkToFile(bool isRecord) {
+    private GenSummary GetGenSummary() {
         GenSummary summary = new GenSummary();
-        //summary.LastModel = ParentSimulation.NuralNetwork;
-        //summary.RecordModel = ParentSimulation.NuralNetwork;
+        summary.Parents = Parents;
+        if (summary.ParentsFitnresses == null) {
+            summary.ParentsFitnresses = new float[SIMULATIONS_NUM];
+        }
+
+        for (int i = 0; i < SIMULATIONS_NUM; i++) {
+            summary.ParentsFitnresses[i] = Simulations[i].Fitness;
+        }
+
         summary.AvgScore = LastGenAvgScore;
         summary.MaxScore = LastGenMaxScore;
         summary.GenNum = CurrentGen;
@@ -343,34 +353,42 @@ public class LearningManager : MonoBehaviour {
         summary.LastRecordBrokenGensAgo = LastRecordBrokenGensAgo;
         summary.DecrementsWithNoRecord = DecrementsWithNoRecord;
 
+        return summary;
+    }
+
+
+    private void SaveNetworkToFile(GenSummary summary, bool isRecord) {
+       
         string dirPath = String.Format("{0}/{1}", FilesLocation, _firstGenStartTime);
 
-        /*if (!Directory.Exists(dirPath)) {
+        if (!Directory.Exists(dirPath)) {
             Directory.CreateDirectory(dirPath);
         }
 
         FileStream file;
         string destination;
         if (isRecord) {
-            destination = String.Format("{0}/GEN_{1}_SCORE_{2}", dirPath, CurrentGen, LastGenMaxScore);
+            //destination = String.Format("{0}/GEN_{1}_SCORE_{2}", dirPath, CurrentGen, LastGenMaxScore);
+            destination = String.Format("{0}/bestLastRecord", dirPath);
         } else {
-            destination = String.Format("{0}/latest", dirPath);
-        }*/
+            destination = String.Format("{0}/latestLastRecord", dirPath);
+        }
 
-        /*if (File.Exists(destination)) {
+        if (File.Exists(destination)) {
             file = File.OpenWrite(destination);
         } else {
             file = File.Create(destination);
         }
 
         _bf.Serialize(file, summary);
-        file.Close();*/
+        file.Close();
 
-        if (!isRecord) {
-            GenRecord.Add(summary);
+
+        if (isRecord) {
+            destination = String.Format("{0}/bestPreviousRecord", dirPath);
+        } else {
+            destination = String.Format("{0}/latestPreviousRecord", dirPath);
         }
-
-        /*destination = String.Format("{0}/record", dirPath);
 
         if (File.Exists(destination)) {
             file = File.OpenWrite(destination);
@@ -379,33 +397,42 @@ public class LearningManager : MonoBehaviour {
         }
 
         _bf.Serialize(file, GenRecord);
-        file.Close();*/
+        file.Close();
     }
 
-    /*public void LoadNetworkFromFile() {
-        string destination = String.Format("{0}/{1}/{2}", FilesLocation, NetworkToLoadFld.text, FileToLoad);
+    public void LoadNetworkFromFile() {
+        string destination = String.Format("{0}/{1}/bestLastRecord", FilesLocation, NetworkToLoadFld.text);
         StreamReader reader = new StreamReader(destination);
         GenSummary summary = _bf.Deserialize(reader.BaseStream) as GenSummary;
         reader.Close();
 
         CurrentGen = summary.GenNum;
         GamesPerIteration = summary.GamesPerIteration;
-        NuralNetworkModel.Duplicate(summary.LastModel, ParentSimulation.NuralNetwork);
-        NuralNetworkModel.Duplicate(summary.RecordModel, RecordSimulation.NuralNetwork);
+
+        for (int i = 0; i < SIMULATIONS_NUM; i++) {
+            NuralNetworkModel.Duplicate(summary.Parents[i], Parents[i]);
+            Simulations[i].Fitness = summary.ParentsFitnresses[i];
+            
+        }
+
+        NuralNetworkModel.Duplicate(summary.Parents[0], Simulations[0].NuralNetwork);
+
         AllTimesMaxScore = summary.MaxScore;
         _firstGenStartTime = summary.FirstGenStartTime;
         LastRecordBrokenGensAgo = summary.LastRecordBrokenGensAgo;
         DecrementsWithNoRecord = summary.DecrementsWithNoRecord;
 
-        destination = String.Format("{0}/{1}/{2}", FilesLocation, NetworkToLoadFld.text, "record");
+        destination = String.Format("{0}/{1}/{2}", FilesLocation, NetworkToLoadFld.text, "bestPreviousRecord");
         reader = new StreamReader(destination);
         GenRecord = _bf.Deserialize(reader.BaseStream) as List<GenSummary>;
         reader.Close();
 
         LoadedFromFile = true;
 
+        GenRecord.Add(summary);
+
         PlotGenRecord();
-    }*/
+    }
 
     private void PlotGenRecord() {
         ScoreText.text = LastGenAvgScore + " / " + AllTimesMaxScore;
@@ -482,8 +509,8 @@ public class LearningManager : MonoBehaviour {
 
     [Serializable]
     private class GenSummary {
-        public NuralNetworkModel RecordModel;
-        public NuralNetworkModel LastModel;
+        public NuralNetworkModel[] Parents;
+        public float[] ParentsFitnresses;
         public int GenNum;
         public float AvgScore;
         public float MaxScore;

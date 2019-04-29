@@ -10,7 +10,7 @@ public class NuralNetworkModel {
     internal static int INPUT_SIZE = 28 * 28;
     internal static int OUTPUT_SIZE = 10;
 
-    internal static float MUTATION_SIZE = 0.4f;
+    internal static float MUTATION_SIZE = 1f;
     internal static float HALF_MUTATION_SIZE;
 
     internal static float MUTATION_Rate = 0.1f;
